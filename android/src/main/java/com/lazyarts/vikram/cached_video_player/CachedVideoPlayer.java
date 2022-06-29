@@ -10,14 +10,15 @@ import static com.google.android.exoplayer2.Player.REPEAT_MODE_OFF;
 import android.content.Context;
 import android.net.Uri;
 import android.view.Surface;
+
 import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.ExoPlaybackException;
+import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.Format;
 import com.google.android.exoplayer2.MediaItem;
+import com.google.android.exoplayer2.PlaybackException;
 import com.google.android.exoplayer2.PlaybackParameters;
 import com.google.android.exoplayer2.Player;
-import com.google.android.exoplayer2.Player.EventListener;
-import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.Player.Listener;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
@@ -27,15 +28,18 @@ import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource;
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource;
 import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
-import io.flutter.plugin.common.EventChannel;
-import io.flutter.view.TextureRegistry;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import io.flutter.plugin.common.EventChannel;
+import io.flutter.view.TextureRegistry;
 
 final class CachedVideoPlayer {
   private static final String FORMAT_SS = "ss";
@@ -43,13 +47,13 @@ final class CachedVideoPlayer {
   private static final String FORMAT_HLS = "hls";
   private static final String FORMAT_OTHER = "other";
 
-  private SimpleExoPlayer exoPlayer;
+  private final ExoPlayer exoPlayer;
 
   private Surface surface;
 
   private final TextureRegistry.SurfaceTextureEntry textureEntry;
 
-  private QueuingEventSink eventSink = new QueuingEventSink();
+  private final QueuingEventSink eventSink = new QueuingEventSink();
 
   private final EventChannel eventChannel;
 
@@ -69,7 +73,7 @@ final class CachedVideoPlayer {
     this.textureEntry = textureEntry;
     this.options = options;
 
-    exoPlayer = new SimpleExoPlayer.Builder(context).build();
+    exoPlayer = new ExoPlayer.Builder(context).build();
 
     Uri uri = Uri.parse(dataSource);
 
@@ -108,20 +112,20 @@ final class CachedVideoPlayer {
       Uri uri, DataSource.Factory mediaDataSourceFactory, String formatHint, Context context) {
     int type;
     if (formatHint == null) {
-      type = Util.inferContentType(uri.getLastPathSegment());
+      type = Util.inferContentType(Uri.parse(uri.getLastPathSegment()));
     } else {
       switch (formatHint) {
         case FORMAT_SS:
-          type = C.TYPE_SS;
+          type = C. CONTENT_TYPE_SS;
           break;
         case FORMAT_DASH:
-          type = C.TYPE_DASH;
+          type = C. CONTENT_TYPE_DASH;
           break;
         case FORMAT_HLS:
-          type = C.TYPE_HLS;
+          type = C. CONTENT_TYPE_HLS;
           break;
         case FORMAT_OTHER:
-          type = C.TYPE_OTHER;
+          type = C. CONTENT_TYPE_OTHER;
           break;
         default:
           type = -1;
@@ -129,20 +133,20 @@ final class CachedVideoPlayer {
       }
     }
     switch (type) {
-      case C.TYPE_SS:
+      case C. CONTENT_TYPE_SS:
         return new SsMediaSource.Factory(
                 new DefaultSsChunkSource.Factory(mediaDataSourceFactory),
-                new DefaultDataSourceFactory(context, null, mediaDataSourceFactory))
+                new DefaultDataSource.Factory(context, mediaDataSourceFactory))
             .createMediaSource(MediaItem.fromUri(uri));
-      case C.TYPE_DASH:
+      case C. CONTENT_TYPE_DASH:
         return new DashMediaSource.Factory(
                 new DefaultDashChunkSource.Factory(mediaDataSourceFactory),
-                new DefaultDataSourceFactory(context, null, mediaDataSourceFactory))
+                new DefaultDataSource.Factory(context, mediaDataSourceFactory))
             .createMediaSource(MediaItem.fromUri(uri));
-      case C.TYPE_HLS:
+      case C. CONTENT_TYPE_HLS:
         return new HlsMediaSource.Factory(mediaDataSourceFactory)
             .createMediaSource(MediaItem.fromUri(uri));
-      case C.TYPE_OTHER:
+      case C. CONTENT_TYPE_OTHER:
         return new ProgressiveMediaSource.Factory(mediaDataSourceFactory)
             .createMediaSource(MediaItem.fromUri(uri));
       default:
@@ -173,7 +177,7 @@ final class CachedVideoPlayer {
     setAudioAttributes(exoPlayer, options.mixWithOthers);
 
     exoPlayer.addListener(
-        new EventListener() {
+        new Listener() {
           private boolean isBuffering = false;
 
           public void setBuffering(boolean buffering) {
@@ -207,12 +211,14 @@ final class CachedVideoPlayer {
           }
 
           @Override
-          public void onPlayerError(final ExoPlaybackException error) {
+          public void onPlayerError(PlaybackException error) {
+            Listener.super.onPlayerError(error);
             setBuffering(false);
             if (eventSink != null) {
               eventSink.error("VideoError", "Video player had error " + error, null);
             }
           }
+
         });
   }
 
@@ -226,9 +232,9 @@ final class CachedVideoPlayer {
   }
 
   @SuppressWarnings("deprecation")
-  private static void setAudioAttributes(SimpleExoPlayer exoPlayer, boolean isMixMode) {
+  private static void setAudioAttributes(ExoPlayer exoPlayer, boolean isMixMode) {
     exoPlayer.setAudioAttributes(
-        new AudioAttributes.Builder().setContentType(C.CONTENT_TYPE_MOVIE).build(), !isMixMode);
+        new AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), !isMixMode);
   }
 
   void play() {
