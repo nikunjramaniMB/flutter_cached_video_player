@@ -11,6 +11,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.view.Surface;
 
+import androidx.annotation.NonNull;
+
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.Format;
@@ -90,7 +92,7 @@ final class CachedVideoPlayer {
       }
       dataSourceFactory = cacheDataSourceFactory;
     } else {
-      dataSourceFactory = new DefaultDataSourceFactory(context, "ExoPlayer");
+      dataSourceFactory = new DefaultDataSource.Factory(context);
     }
 
     MediaSource mediaSource = buildMediaSource(uri, dataSourceFactory, formatHint, context);
@@ -211,7 +213,7 @@ final class CachedVideoPlayer {
           }
 
           @Override
-          public void onPlayerError(PlaybackException error) {
+          public void onPlayerError(@NonNull PlaybackException error) {
             Listener.super.onPlayerError(error);
             setBuffering(false);
             if (eventSink != null) {
