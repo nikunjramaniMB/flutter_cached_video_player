@@ -53,7 +53,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     controller = CachedVideoPlayerController.network(
-        "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4");
+        "https://firebasestorage.googleapis.com/v0/b/loftie-4f472.appspot.com/o/video%2FFind%20Alarms.mp4?alt=media&token=1d306c9f-5849-40c6-95a5-3e88e0950b54");
     controller.initialize().then((value) {
       controller.play();
       setState(() {});
